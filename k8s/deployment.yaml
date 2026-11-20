@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bdget
+  namespace: bdget
+  labels:
+    app: bdget
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bdget
+  template:
+    metadata:
+      labels:
+        app: bdget
+    spec:
+      containers:
+        - name: bdget
+          image: __APP_IMAGE__
+          ports:
+            - containerPort: 8081
+          env:
+            - name: DB_TNS_ALIAS
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: DB_TNS_ALIAS
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:oracle:thin:@$(DB_TNS_ALIAS)?TNS_ADMIN=/app/wallet"
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: DB_USERNAME
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: DB_PASSWORD
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: 8081
+            periodSeconds: 5
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8081
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8081
+            periodSeconds: 5
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1001
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: wallet
+              mountPath: /app/wallet
+              readOnly: true
+      volumes:
+        - name: wallet
+          secret:
+            secretName: oracle-wallet
