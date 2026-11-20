@@ -116,7 +116,7 @@ jobs:
         run: |
           mvn -B clean verify \
             org.sonarsource.scanner.maven:sonar-maven-plugin:5.8.0.7211:sonar \
-            -Dsonar.projectKey=cristian2434_ing-devops-ev.-parcial-2 \
+            -Dsonar.projectKey=cristian2434_ing-devops-ev.-parcial-3 \
             -Dsonar.organization=cristian2434 \
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
@@ -167,13 +167,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      # Nombre fijo y valido para Docker. El repo se llama "ing-devops-ev.-parcial-2"
+      # Nombre fijo y valido para Docker. El repo se llama "ing-devops-ev.-parcial-3"
       # (un "." pegado a un "-" no es valido en una referencia de imagen), por eso
       # NO se usa github.repository para armar la etiqueta.
       - name: Calcular nombre de la imagen
         id: meta
         env:
-          IMAGE_NAME: ghcr.io/cristian2434/ing-devops-ev-parcial-2
+          IMAGE_NAME: ghcr.io/cristian2434/ing-devops-ev-parcial-3
         run: |
           echo "image=${IMAGE_NAME}:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
           echo "latest=${IMAGE_NAME}:latest" >> "$GITHUB_OUTPUT"
@@ -204,12 +204,12 @@ jobs:
           cache-to: type=gha,mode=max
 
   # ---------------------------------------------------------------
-  # 6) Despliegue automatico en AWS (EC2) con Docker Compose por SSH.
+  # 6) Despliegue automatico en Kubernetes (k3s sobre EC2) por SSH.
   #    Solo en push a main (IE4 / IE5). Despliega la imagen exacta
   #    construida en este mismo run (etiqueta = SHA del commit).
   # ---------------------------------------------------------------
   deploy:
-    name: Deploy (Docker Compose)
+    name: Deploy (Kubernetes k3s)
     needs: docker
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
@@ -256,38 +256,36 @@ jobs:
           unzip -q wallet.zip -d wallet
           rm wallet.zip
 
-      - name: Copiar compose y wallet a la EC2
+      - name: Preparar manifiestos con la imagen del commit
         run: |
-          ssh ec2 'mkdir -p ~/bdget && rm -rf ~/bdget/wallet'
-          scp -r docker-compose.yml wallet ec2:~/bdget/
+          sed "s|__APP_IMAGE__|${APP_IMAGE}|" k8s/deployment.yaml > k8s/deployment.rendered.yaml
+          ssh ec2 'rm -rf ~/bdget && mkdir -p ~/bdget/k8s ~/bdget/wallet'
+          scp k8s/namespace.yaml k8s/service.yaml k8s/deployment.rendered.yaml ec2:~/bdget/k8s/
+          scp -r wallet/. ec2:~/bdget/wallet/
 
-      - name: Escribir variables de entorno en la EC2
+      - name: Crear namespace y secretos en Kubernetes
         run: |
-          ssh ec2 'umask 077 && cat > ~/bdget/.env' <<EOF
-          APP_IMAGE='${APP_IMAGE}'
-          DB_TNS_ALIAS='${DB_TNS_ALIAS}'
-          DB_USERNAME='${DB_USERNAME}'
-          DB_PASSWORD='${DB_PASSWORD}'
+          K='sudo k3s kubectl'
+          ssh ec2 "$K apply -f ~/bdget/k8s/namespace.yaml"
+          ssh ec2 "$K create secret generic oracle-wallet -n bdget --from-file=\$HOME/bdget/wallet --dry-run=client -o yaml | $K apply -f -"
+          ssh ec2 'umask 077 && cat > ~/bdget/db.env' <<EOF
+          DB_TNS_ALIAS=${DB_TNS_ALIAS}
+          DB_USERNAME=${DB_USERNAME}
+          DB_PASSWORD=${DB_PASSWORD}
           EOF
+          ssh ec2 "$K create secret generic db-credentials -n bdget --from-env-file=\$HOME/bdget/db.env --dry-run=client -o yaml | $K apply -f -"
+          ssh ec2 'rm -rf ~/bdget/wallet ~/bdget/db.env'
 
-      - name: Login en GHCR desde la EC2 y levantar el servicio
-        env:
-          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Aplicar manifiestos y esperar el rollout
         run: |
-          echo "$GHCR_TOKEN" | ssh ec2 "docker login ghcr.io -u '${GITHUB_ACTOR}' --password-stdin"
-          ssh ec2 'cd ~/bdget && docker compose pull && docker compose up -d'
-
-      - name: Esperar a que el contenedor este saludable
-        run: |
-          for i in $(seq 1 30); do
-            estado=$(ssh ec2 "docker inspect --format='{{.State.Health.Status}}' bdget" 2>/dev/null || echo "sin-contenedor")
-            echo "Intento $i: $estado"
-            if [ "$estado" = "healthy" ]; then exit 0; fi
-            sleep 5
-          done
-          echo "El servicio no quedo saludable. Ultimos logs:"
-          ssh ec2 'cd ~/bdget && docker compose logs --tail=100'
-          exit 1
+          K='sudo k3s kubectl'
+          ssh ec2 "$K apply -f ~/bdget/k8s/service.yaml -f ~/bdget/k8s/deployment.rendered.yaml"
+          if ! ssh ec2 "$K rollout status deployment/bdget -n bdget --timeout=300s"; then
+            echo "El rollout fallo. Estado y logs:"
+            ssh ec2 "$K get pods -n bdget; $K describe pods -n bdget | tail -40; $K logs deployment/bdget -n bdget --tail=100" || true
+            ssh ec2 "$K rollout undo deployment/bdget -n bdget" || true
+            exit 1
+          fi
 
       # Prueba de humo ejecutada dentro de la EC2 (loopback): evita enviar
       # trafico HTTP en claro por internet y no dispara la regla S5332 de Sonar.
@@ -306,5 +304,6 @@ jobs:
           echo "### Despliegue exitoso en AWS EC2" >> "$GITHUB_STEP_SUMMARY"
           echo "- Commit: \`${GITHUB_SHA}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Imagen: \`${APP_IMAGE}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Orquestador: Kubernetes (k3s), namespace bdget" >> "$GITHUB_STEP_SUMMARY"
           echo "- Health: puerto 8081, ruta /api/health" >> "$GITHUB_STEP_SUMMARY"
           echo "- Pagina web: puerto 80" >> "$GITHUB_STEP_SUMMARY"
