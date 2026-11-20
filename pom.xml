@@ -17,6 +17,7 @@
         <java.version>17</java.version>
         <tomcat.version>10.1.61</tomcat.version>
         <jackson-bom.version>2.21.8</jackson-bom.version>
+        <micrometer.version>1.16.7</micrometer.version>
     </properties>
         <dependencyManagement>
                 <dependencies>
