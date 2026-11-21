@@ -16,11 +16,30 @@ concurrency:
 jobs:
 
   # ---------------------------------------------------------------
+  # 0) Auditoria de politicas de cumplimiento sobre los manifiestos de
+  #    Kubernetes (IE5). Si incumplen una politica (sin limits, sin probes,
+  #    root, imagen :latest...) el pipeline se detiene aqui (IE6).
+  # ---------------------------------------------------------------
+  policy-audit:
+    name: Auditoria de politicas K8s
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Instalar PyYAML
+        run: "python3 -m pip install --quiet --only-binary :all: pyyaml==6.0.3"
+
+      - name: Auditar manifiestos de Kubernetes
+        run: python3 scripts/audit-k8s.py k8s
+
+  # ---------------------------------------------------------------
   # 1) Escaneo de seguridad con Snyk. Falla (y bloquea el pipeline)
   #    si encuentra vulnerabilidades altas o criticas (IE3).
   # ---------------------------------------------------------------
   snyk-scan:
     name: Snyk Security Scan
+    needs: policy-audit
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -201,11 +220,40 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Construir (y publicar en main)
+      # 1. Se construye la imagen SIN publicarla (queda solo en el runner).
+      - name: Construir imagen (sin publicar)
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
-          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          load: true
+          push: false
+          tags: ${{ steps.meta.outputs.image }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # 2. Trivy escanea la imagen. Una vulnerabilidad CRITICAL con correccion
+      #    disponible detiene el pipeline: la imagen no llega a GHCR (IE5/IE6).
+      #    Accion fijada por SHA (v0.35.0) y Trivy v0.69.3: las versiones
+      #    posteriores a v0.69.3 / etiquetas anteriores a 0.35.0 estuvieron
+      #    comprometidas en marzo de 2026 (GHSA-69fq-xp46-6x23).
+      - name: Escanear imagen con Trivy (bloquea si hay CRITICAL)
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        with:
+          image-ref: ${{ steps.meta.outputs.image }}
+          version: v0.69.3
+          scanners: vuln
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          format: table
+
+      # 3. Solo si el escaneo paso y estamos en main, se publica en GHCR.
+      - name: Publicar imagen en GHCR (solo main)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          push: true
           tags: |
             ${{ steps.meta.outputs.image }}
             ${{ steps.meta.outputs.latest }}
@@ -213,7 +261,6 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
 
   # ---------------------------------------------------------------
   # 6) Despliegue automatico en Kubernetes (k3s sobre EC2) por SSH.
