@@ -28,7 +28,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Instalar PyYAML
-        run: "python3 -m pip install --quiet --only-binary :all: pyyaml==6.0.2"
+        run: "python3 -m pip install --quiet --only-binary :all: pyyaml==6.0.3"
 
       - name: Auditar manifiestos de Kubernetes
         run: python3 scripts/audit-k8s.py k8s
