@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -13,6 +15,8 @@ import org.springframework.web.context.request.WebRequest;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     //Excepcion Personalizada
     @ExceptionHandler(RuntimeException.class)
@@ -48,6 +52,10 @@ public class GlobalExceptionHandler {
     // lo que dificultaba el diagnostico de errores en produccion.
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Object> handleGeneralException(Exception ex, WebRequest request) {
+
+        // Deja la traza en el log (nivel ERROR) para que el metric filter de
+        // CloudWatch la cuente. No se registran datos de la peticion (log injection).
+        log.error("Error no controlado en la API", ex);
 
         Map<String, Object> response = new HashMap<>();
         response.put("timestamp", LocalDateTime.now());
