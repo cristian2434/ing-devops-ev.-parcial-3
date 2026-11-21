@@ -1,0 +1,75 @@
+{
+  "start": "-P7D",
+  "widgets": [
+    {
+      "type": "text", "x": 0, "y": 0, "width": 24, "height": 2,
+      "properties": {
+        "markdown": "# Bdget - Observabilidad y CI/CD\nCPU, memoria y disco de la EC2 (k3s) | errores de la aplicacion | disponibilidad | tiempo de despliegue y cobertura de pruebas publicados por el pipeline."
+      }
+    },
+    {
+      "type": "metric", "x": 0, "y": 2, "width": 8, "height": 6,
+      "properties": {
+        "title": "CPU (%) - umbral de alarma 50",
+        "view": "timeSeries", "stacked": false, "region": "us-east-1",
+        "metrics": [ [ "AWS/EC2", "CPUUtilization", "InstanceId", "__INSTANCE_ID__", { "stat": "Average", "period": 300 } ] ],
+        "yAxis": { "left": { "min": 0, "max": 100 } },
+        "annotations": { "horizontal": [ { "label": "Alarma CPU > 50", "value": 50 } ] }
+      }
+    },
+    {
+      "type": "metric", "x": 8, "y": 2, "width": 8, "height": 6,
+      "properties": {
+        "title": "Memoria y disco (%)",
+        "view": "timeSeries", "stacked": false, "region": "us-east-1",
+        "metrics": [
+          [ "CWAgent", "mem_used_percent", "InstanceId", "__INSTANCE_ID__", { "stat": "Average", "period": 60, "label": "Memoria" } ],
+          [ "CWAgent", "disk_used_percent", "InstanceId", "__INSTANCE_ID__", "device", "nvme0n1p1", "fstype", "xfs", "path", "/", { "stat": "Average", "period": 60, "label": "Disco /" } ]
+        ],
+        "yAxis": { "left": { "min": 0, "max": 100 } }
+      }
+    },
+    {
+      "type": "metric", "x": 16, "y": 2, "width": 8, "height": 6,
+      "properties": {
+        "title": "Errores registrados (lineas ERROR)",
+        "view": "timeSeries", "stacked": false, "region": "us-east-1",
+        "metrics": [ [ "Bdget", "ErroresApp", { "stat": "Sum", "period": 300 } ] ],
+        "yAxis": { "left": { "min": 0 } }
+      }
+    },
+    {
+      "type": "metric", "x": 0, "y": 8, "width": 8, "height": 6,
+      "properties": {
+        "title": "Disponibilidad (/actuator/health: 1 = UP, 0 = DOWN)",
+        "view": "timeSeries", "stacked": false, "region": "us-east-1",
+        "metrics": [ [ "Bdget", "HealthUp", { "stat": "Minimum", "period": 60 } ] ],
+        "yAxis": { "left": { "min": 0, "max": 1 } }
+      }
+    },
+    {
+      "type": "metric", "x": 8, "y": 8, "width": 8, "height": 6,
+      "properties": {
+        "title": "Tiempo de despliegue (segundos)",
+        "view": "singleValue", "region": "us-east-1", "setPeriodToTimeRange": true,
+        "metrics": [ [ "Bdget/Pipeline", "DeployDurationSeconds", { "stat": "Maximum" } ] ]
+      }
+    },
+    {
+      "type": "metric", "x": 16, "y": 8, "width": 8, "height": 6,
+      "properties": {
+        "title": "Cobertura de pruebas JaCoCo (%)",
+        "view": "singleValue", "region": "us-east-1", "setPeriodToTimeRange": true,
+        "metrics": [ [ "Bdget/Pipeline", "CoveragePercent", { "stat": "Minimum" } ] ]
+      }
+    },
+    {
+      "type": "log", "x": 0, "y": 14, "width": 24, "height": 6,
+      "properties": {
+        "title": "Ultimos errores de la aplicacion (/bdget/app)",
+        "region": "us-east-1", "view": "table",
+        "query": "SOURCE '/bdget/app' | fields @timestamp, @message | filter @message like /ERROR/ | sort @timestamp desc | limit 20"
+      }
+    }
+  ]
+}
