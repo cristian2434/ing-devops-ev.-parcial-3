@@ -69,6 +69,8 @@ jobs:
     name: Run Tests with JaCoCo
     needs: snyk-scan
     runs-on: ubuntu-latest
+    outputs:
+      coverage: ${{ steps.cov.outputs.coverage }}
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -82,6 +84,16 @@ jobs:
 
       - name: Ejecutar pruebas y verificar cobertura
         run: mvn -B clean verify
+
+      # Cobertura total de instrucciones leida de jacoco.csv. El deploy la
+      # publica como metrica en CloudWatch (dashboard, IE3).
+      - name: Calcular cobertura total (JaCoCo)
+        id: cov
+        run: |
+          COV=$(awk -F, 'NR>1 {m+=$4; c+=$5} END {if (m+c>0) printf "%.2f", 100*c/(m+c); else print "0"}' target/site/jacoco/jacoco.csv)
+          echo "coverage=${COV}" >> "$GITHUB_OUTPUT"
+          echo "Cobertura de instrucciones: ${COV}%"
+          echo "### Cobertura JaCoCo: ${COV}%" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publicar reporte de JaCoCo
         if: always()
@@ -210,7 +222,7 @@ jobs:
   # ---------------------------------------------------------------
   deploy:
     name: Deploy (Kubernetes k3s)
-    needs: docker
+    needs: [docker, test]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: produccion-simulada
@@ -219,12 +231,16 @@ jobs:
       packages: read
     env:
       APP_IMAGE: ${{ needs.docker.outputs.image }}
+      COVERAGE: ${{ needs.test.outputs.coverage }}
       EC2_HOST: ${{ secrets.EC2_HOST }}
       EC2_USER: ${{ secrets.EC2_USER || 'ec2-user' }}
       DB_TNS_ALIAS: ${{ secrets.DB_TNS_ALIAS }}
       DB_USERNAME: ${{ secrets.DB_USERNAME }}
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
     steps:
+      - name: Marcar inicio del despliegue
+        run: echo "DEPLOY_START=$(date +%s)" >> "$GITHUB_ENV"
+
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
@@ -299,6 +315,16 @@ jobs:
           scp web/index.html ec2:/tmp/index.html
           ssh ec2 'sudo install -m 644 /tmp/index.html /var/www/html/index.html && rm -f /tmp/index.html'
 
+      # Metricas del pipeline + dashboard + disponibilidad en CloudWatch (IE3).
+      # Se ejecuta en la EC2 con su rol de instancia: sin credenciales en GitHub.
+      - name: Publicar metricas y dashboard en CloudWatch
+        continue-on-error: true
+        run: |
+          DURATION=$(( $(date +%s) - DEPLOY_START ))
+          echo "DEPLOY_SECONDS=${DURATION}" >> "$GITHUB_ENV"
+          scp scripts/publish-observability.sh scripts/health-metric.sh monitoring/dashboard.json ec2:/tmp/
+          ssh ec2 "bash /tmp/publish-observability.sh ${DURATION} ${COVERAGE}; rm -f /tmp/publish-observability.sh"
+
       - name: Resumen del despliegue
         run: |
           echo "### Despliegue exitoso en AWS EC2" >> "$GITHUB_STEP_SUMMARY"
@@ -307,3 +333,5 @@ jobs:
           echo "- Orquestador: Kubernetes (k3s), namespace bdget" >> "$GITHUB_STEP_SUMMARY"
           echo "- Health: puerto 8081, ruta /api/health" >> "$GITHUB_STEP_SUMMARY"
           echo "- Pagina web: puerto 80" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Tiempo de despliegue: ${DEPLOY_SECONDS:-n/d} s | Cobertura: ${COVERAGE}%" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Dashboard: CloudWatch > Bdget-Observabilidad" >> "$GITHUB_STEP_SUMMARY"
