@@ -1,0 +1,4 @@
+# Vulnerabilidades aceptadas para Trivy (una por linea, con su justificacion).
+# Solo se agrega un CVE tras revisarlo: indicar motivo y fecha de revision.
+# Ejemplo:
+# CVE-2026-00000   # sin correccion disponible, no explotable en este servicio (revisar 2027-01-31)
