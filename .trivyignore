@@ -11,17 +11,3 @@
 CVE-2026-47884 exp:2027-01-31
 # CVE-2026-47890: corrupcion de stream en SSE con fragmentos de vista (spring-webmvc)
 CVE-2026-47890 exp:2027-01-31
-EOFcat > .trivyignore <<'EOF'
-# Vulnerabilidades aceptadas para Trivy (revisadas el 2026-11-21).
-# Cada una lleva fecha de expiracion (exp:): al vencer, Trivy vuelve a bloquear
-# y obliga a revisarla de nuevo.
-#
-# Spring Framework 6.2.19 (Spring Boot 3.5.15). El unico parche de codigo abierto
-# esta en Spring Framework 7.0.9 (Spring Boot 4, migracion mayor). La correccion 6.2.20
-# es solo para soporte comercial. No explotable en este servicio: la API solo tiene
-# controladores REST, sin XsltView, sin vistas y sin Server-Sent Events.
-#
-# CVE-2026-47884: RCE via XsltView (spring-webmvc)
-CVE-2026-47884 exp:2027-01-31
-# CVE-2026-47890: corrupcion de stream en SSE con fragmentos de vista (spring-webmvc)
-CVE-2026-47890 exp:2027-01-31
