@@ -222,7 +222,7 @@ jobs:
 
       # 1. Se construye la imagen SIN publicarla (queda solo en el runner).
       - name: Construir imagen (sin publicar)
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           load: true
@@ -250,7 +250,7 @@ jobs:
       # 3. Solo si el escaneo paso y estamos en main, se publica en GHCR.
       - name: Publicar imagen en GHCR (solo main)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           push: true
