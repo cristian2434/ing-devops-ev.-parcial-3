@@ -28,6 +28,22 @@
                                 <type>pom</type>
                                 <scope>import</scope>
                         </dependency>
+                        <!-- Trivy CVE-2026-8763: Bouncy Castle < 1.85 (llega transitivo por spring-cloud-starter-config) -->
+                        <dependency>
+                                <groupId>org.bouncycastle</groupId>
+                                <artifactId>bcprov-jdk18on</artifactId>
+                                <version>1.85</version>
+                        </dependency>
+                        <dependency>
+                                <groupId>org.bouncycastle</groupId>
+                                <artifactId>bcpkix-jdk18on</artifactId>
+                                <version>1.85</version>
+                        </dependency>
+                        <dependency>
+                                <groupId>org.bouncycastle</groupId>
+                                <artifactId>bcutil-jdk18on</artifactId>
+                                <version>1.85</version>
+                        </dependency>
                 </dependencies>
         </dependencyManagement>
 
