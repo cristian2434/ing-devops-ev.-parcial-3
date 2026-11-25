@@ -261,3 +261,46 @@ ignore:
           Sin actualizacion directa; la correccion existe en una version mas nueva de la dependencia transitiva (bcprov-jdk18on 1.86). Pendiente de fijar esa version en el pom.xml. Riesgo aceptado temporalmente: proyecto academico con despliegue solo en entorno simulado.
         expires: 2027-01-31T00:00:00.000Z
         created: 2026-10-24T00:00:00.000Z
+  SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-22756768:
+    - '*':
+        reason: >-
+          Snyk indica que la correccion requiere Spring Boot 4.0.0 (migracion mayor); no hay correccion dentro de Spring Boot 3.5.15. Riesgo aceptado temporalmente: proyecto academico con despliegue solo en entorno simulado. Revisar antes de la fecha de expiracion.
+        expires: 2027-01-31T00:00:00.000Z
+        created: 2026-11-24T00:00:00.000Z
+  SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-22729051:
+    - '*':
+        reason: >-
+          Snyk indica que la correccion requiere Spring Boot 4.0.0 (migracion mayor); no hay correccion dentro de Spring Boot 3.5.15. Riesgo aceptado temporalmente: proyecto academico con despliegue solo en entorno simulado. Revisar antes de la fecha de expiracion.
+        expires: 2027-01-31T00:00:00.000Z
+        created: 2026-11-24T00:00:00.000Z
+  SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-22729029:
+    - '*':
+        reason: >-
+          Snyk indica que la correccion requiere Spring Boot 4.0.0 (migracion mayor); no hay correccion dentro de Spring Boot 3.5.15. Riesgo aceptado temporalmente: proyecto academico con despliegue solo en entorno simulado. Revisar antes de la fecha de expiracion.
+        expires: 2027-01-31T00:00:00.000Z
+        created: 2026-11-24T00:00:00.000Z
+  SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-22756767:
+    - '*':
+        reason: >-
+          Snyk indica que la correccion requiere Spring Boot 4.0.0 (migracion mayor); no hay correccion dentro de Spring Boot 3.5.15. Riesgo aceptado temporalmente: proyecto academico con despliegue solo en entorno simulado. Revisar antes de la fecha de expiracion.
+        expires: 2027-01-31T00:00:00.000Z
+        created: 2026-11-24T00:00:00.000Z
+  SNYK-JAVA-ORGSPRINGFRAMEWORK-22727152:
+    - '*':
+        reason: >-
+          Snyk indica que la correccion requiere Spring Boot 4.0.0 (migracion mayor); no hay correccion dentro de Spring Boot 3.5.15. Riesgo aceptado temporalmente: proyecto academico con despliegue solo en entorno simulado. Revisar antes de la fecha de expiracion.
+        expires: 2027-01-31T00:00:00.000Z
+        created: 2026-11-24T00:00:00.000Z
+  SNYK-JAVA-ORGSPRINGFRAMEWORK-22727191:
+    - '*':
+        reason: >-
+          Snyk indica que la correccion requiere Spring Boot 4.0.0 (migracion mayor); no hay correccion dentro de Spring Boot 3.5.15. Riesgo aceptado temporalmente: proyecto academico con despliegue solo en entorno simulado. Revisar antes de la fecha de expiracion.
+        expires: 2027-01-31T00:00:00.000Z
+        created: 2026-11-24T00:00:00.000Z
+  SNYK-JAVA-ORGSPRINGFRAMEWORK-22727208:
+    - '*':
+        reason: >-
+          Snyk indica que la correccion requiere Spring Boot 4.0.0 (migracion mayor); no hay correccion dentro de Spring Boot 3.5.15. Riesgo aceptado temporalmente: proyecto academico con despliegue solo en entorno simulado. Revisar antes de la fecha de expiracion.
+        expires: 2027-01-31T00:00:00.000Z
+        created: 2026-11-24T00:00:00.000Z
+
